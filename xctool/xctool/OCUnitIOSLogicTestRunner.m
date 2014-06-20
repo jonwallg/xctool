@@ -71,18 +71,21 @@
   }
 
   if (bundleExists) {
+    NSPipe *outputPipe = [NSPipe pipe];
     @autoreleasepool {
       NSTask *task = [self otestTaskWithTestBundle:testBundlePath];
 
       // Don't let STDERR pass through.  This silences the warning message that
       // comes from the 'sim' launcher when the iOS Simulator isn't running:
       // "Simulator does not seem to be running, or may be running an old SDK."
-      [task setStandardError:[NSFileHandle fileHandleWithNullDevice]];
+      [task setStandardError:outputPipe];
 
       LaunchTaskAndFeedOuputLinesToBlock(task,
                                          @"running otest/xctest on test bundle",
                                          outputLineBlock);
     }
+    NSData *outputData = [[outputPipe fileHandleForReading] readDataToEndOfFile];
+    *otherErrors = [[[NSString alloc] initWithData:outputData encoding:NSUTF8StringEncoding] autorelease];
   } else {
     *startupError = [NSString stringWithFormat:@"Test bundle not found at: %@", testBundlePath];
   }
